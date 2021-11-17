@@ -51,27 +51,27 @@ acho que nao precisa colocar esse modelo no relatorio so ter o codigo no apendic
 
 <!-- ler conjunto de dados e fazer analise descritiva -->
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-dados_estrelas <- read_csv("dados.csv")
+```{r}
+dados_estrelas <- read_csv("stars.csv")
 
 # mudando tipo/nome das variáveis 
-names(dados)<-c("temperatura","luminosidade","raio","magnitude","tipo","cor","espectro")
-dados$tipo<-as.character(dados$tipo)
+names(dados_estrelas)<-c("temperatura","luminosidade","raio","magnitude","tipo","cor","espectro")
+dados_estrelas$tipo<-as.character(dados_estrelas$tipo)
 
 # arrumando o nome das cores das estrelas
-dados[dados$cor=="white",6]<-"White"
-dados[dados$cor=="Blue-White",6]<-"Blue White"
-dados[dados$cor=="Blue-white",6]<-"Blue White"
-dados[dados$cor=="Blue white",6]<-"Blue White"
-dados[dados$cor=="yellowish",6]<-"Yellowish"
+dados_estrelas[dados_estrelas$cor=="white",6]<-"White"
+dados_estrelas[dados_estrelas$cor=="Blue-White",6]<-"Blue White"
+dados_estrelas[dados_estrelas$cor=="Blue-white",6]<-"Blue White"
+dados_estrelas[dados_estrelas$cor=="Blue white",6]<-"Blue White"
+dados_estrelas[dados_estrelas$cor=="yellowish",6]<-"Yellowish"
 
 
-dados[dados$tipo=="0" ,5]<-"Brown Dwarf"
-dados[dados$tipo=="1" ,5]<-"Red Dwarf"
-dados[dados$tipo=="2" ,5]<-"White Dwarf"
-dados[dados$tipo=="3" ,5]<-"Main Sequence"
-dados[dados$tipo=="4" ,5]<-"Supergiant"
-dados[dados$tipo=="5" ,5]<-"Hypergiant"
+dados_estrelas[dados_estrelas$tipo=="0" ,5]<-"Brown Dwarf"
+dados_estrelas[dados_estrelas$tipo=="1" ,5]<-"Red Dwarf"
+dados_estrelas[dados_estrelas$tipo=="2" ,5]<-"White Dwarf"
+dados_estrelas[dados_estrelas$tipo=="3" ,5]<-"Main Sequence"
+dados_estrelas[dados_estrelas$tipo=="4" ,5]<-"Supergiant"
+dados_estrelas[dados_estrelas$tipo=="5" ,5]<-"Hypergiant"
 
 
 ```
@@ -88,14 +88,14 @@ O banco de dados contém 240 observações e 7 variáveis:
 - Tipo de Estrela (anãs brancas, anãs vermelhas, gigantes vermelhas, supergigantes azuis ...)
 
 ```{r}
-glimpse(dados)
+glimpse(dados_estrelas)
 ```
 
 
 As estrelas são corpos celestes que são densas e emitem luz pela conversão de energia térmica em energia eletromagnética (luz). E desta forma emite luz com um certo comprimento de onda $\lambda$ que é bastante relacionado com a cor da estrela. Este comportamento pode ser ilustrado pelo gráfico abaixo:
 
 ```{r}
-ggplot(dados ) +
+ggplot(dados_estrelas) +
   geom_boxplot(aes(x = cor, y = temperatura)) + 
   xlab("Cor da Estrela") + ylab("Temperatura (K)") + 
   # ggtitle("Temperatura da Estrela por coloração") +
@@ -109,7 +109,7 @@ ggplot(dados ) +
 ```
 
 ```{r}
-ggplot(dados ) +
+ggplot(dados_estrelas) +
   geom_boxplot(aes(x = tipo, y = temperatura)) + 
   xlab("Tipo de Estrela") + ylab("Temperatura (K)") + 
   # ggtitle("Temperatura da Estrela por coloração") +
@@ -127,7 +127,7 @@ A temperatura da estrela é obtida pela lei de Wienn que relaciona a temperatura
 A luminosidade de uma estrela foi obtida usando a lei de Stefan-Boltzmann. 
 
 ```{r}
-ggplot(dados) + 
+ggplot(dados_estrelas) + 
   geom_boxplot(aes(x = tipo, y = luminosidade)) + 
   xlab("Tipo de Estrela") + ylab("Luminosidade relativa (L/Lo)") +
   # ggtitle("Luminosidade da Estrela por tipo de estrela")+ 
@@ -144,7 +144,7 @@ ggplot(dados) +
 A variável resposta do estudo é o tipo de estrela, nota-se que a luminosidade relativa é maior em estrelas gigantes. Este comportamento também é visível no gráfico abaixo no qual estrelas hipergigantes e supergigantes tem um raio maior que os outros tipos de estrelas. O raio da estrela foi estimado usando um conceito muito importante na astronomia chamado paralaxe.
 
 ```{r}
-ggplot(dados) + 
+ggplot(dados_estrelas) + 
   geom_boxplot(aes(x = tipo, y = raio)) + 
   xlab("Tipo de Estrela") + ylab("Raio") + 
   # ggtitle("Raio Estimado da Estrela por tipo de estrela") + 
@@ -158,7 +158,7 @@ ggplot(dados) +
 ```
 
 ```{r}
-ggplot(dados) + 
+ggplot(dados_estrelas) + 
   geom_boxplot(aes(x = tipo, y = magnitude)) + 
   xlab("Tipo de Estrela") + ylab("Magnitude Absoluta (Mv)") +
   # ggtitle("Luminosidade da Estrela por tipo de estrela")+ 
@@ -173,7 +173,7 @@ ggplot(dados) +
 ```
 
 ```{r}
-ggplot(dados %>%
+ggplot(dados_estrelas %>%
          group_by(tipo,cor) %>% 
          summarise(count = n()), 
        aes(x = reorder(tipo,(-count)), y = count)) +
@@ -195,7 +195,7 @@ ggplot(dados %>%
 Nota-se pelo gráfico acima que estrelas maiores apresentam maior variabilidade de cores. Estrelas menores apresentam um comportamento oposto. Pelo fato de não se conhecer o processo de amostragem e coleta dos dados é difícil dizer se este comportamento pode ser generalizado, entretanto com o auxílio de outras variáveis será bastante útil para a classificação do tipo de estrela.
 
 ```{r}
-ggplot(dados %>%
+ggplot(dados_estrelas %>%
          group_by(tipo,espectro) %>% 
          summarise(count = n()), 
        aes(x = reorder(tipo,(-count)), y = count)) +
@@ -215,9 +215,9 @@ ggplot(dados %>%
 
 ```{r}
 # grafico de correlacao
-corrplot(cor(dados[,c(1,2,3,4)]), order= c("FPC"), tl.offset = 1, number.cex = 1.5,cl.pos = 'b',cl.cex = 1,
-         tl.cex = 1, method = "number", tl.col="black",addgrid.col="grey",
-         col = colorRampPalette(c("red", "gray", "blue"))(30))
+corrplot(cor(dados_estrelas[,c(1,2,3,4)]), order= c("FPC"), tl.offset = 1, number.cex = 1.5,
+         cl.pos = 'b',cl.cex = 1,tl.cex = 1, method = "number", tl.col="black",
+         addgrid.col="grey", col = colorRampPalette(c("red", "gray", "blue"))(30))
 ```
 
 # Árvore de Classificação
