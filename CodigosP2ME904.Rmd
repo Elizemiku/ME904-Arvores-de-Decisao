@@ -1,0 +1,281 @@
+---
+title: "Códigos - Trabalho 2 de ME904"
+date: "17/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.pos = 'H')
+```
+
+```{r}
+# Carregando pacotes 
+library(tidyverse)
+library(tidymodels)
+library(caret)
+library(corrplot)
+```
+
+# Análise Descritiva - Preços de seguros médicos 
+
+<!-- ler conjunto de dados e fazer analise descritiva -->
+
+# Árvore de Regressão 
+
+<!-- colocar aqui modelagem da arvore de regressao para ver como funciona, 
+acho que nao precisa colocar esse modelo no relatorio so ter o codigo no apendice  -->
+
+```{r}
+
+```
+
+
+## Bagging
+
+<!--fazer arvores de regressao utilizando bagging -->
+
+```{r}
+
+```
+
+## Boosting 
+
+<!--fazer arvores de regressao utilizando boosting -->
+
+```{r}
+
+```
+
+
+# Análise Descritiva - Tipos de estrelas
+
+<!-- ler conjunto de dados e fazer analise descritiva -->
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+dados_estrelas <- read_csv("dados.csv")
+
+# mudando tipo/nome das variáveis 
+names(dados)<-c("temperatura","luminosidade","raio","magnitude","tipo","cor","espectro")
+dados$tipo<-as.character(dados$tipo)
+
+# arrumando o nome das cores das estrelas
+dados[dados$cor=="white",6]<-"White"
+dados[dados$cor=="Blue-White",6]<-"Blue White"
+dados[dados$cor=="Blue-white",6]<-"Blue White"
+dados[dados$cor=="Blue white",6]<-"Blue White"
+dados[dados$cor=="yellowish",6]<-"Yellowish"
+
+
+dados[dados$tipo=="0" ,5]<-"Brown Dwarf"
+dados[dados$tipo=="1" ,5]<-"Red Dwarf"
+dados[dados$tipo=="2" ,5]<-"White Dwarf"
+dados[dados$tipo=="3" ,5]<-"Main Sequence"
+dados[dados$tipo=="4" ,5]<-"Supergiant"
+dados[dados$tipo=="5" ,5]<-"Hypergiant"
+
+
+```
+
+
+O banco de dados contém 240 observações e 7 variáveis:
+
+- Temperatura Absoluta (em Kelvins)
+- Cor da Estrela (white,Red,Blue,Yellow,yellow-orange etc)
+- Luminosidade Relativa (L/Lo)
+- Raio Relativo (R/Ro)
+- Magnitude Absoluta (Mv)
+- Classe Espectral (O,B,A,F,G,K,,M)
+- Tipo de Estrela (anãs brancas, anãs vermelhas, gigantes vermelhas, supergigantes azuis ...)
+
+```{r}
+glimpse(dados)
+```
+
+
+As estrelas são corpos celestes que são densas e emitem luz pela conversão de energia térmica em energia eletromagnética (luz). E desta forma emite luz com um certo comprimento de onda $\lambda$ que é bastante relacionado com a cor da estrela. Este comportamento pode ser ilustrado pelo gráfico abaixo:
+
+```{r}
+ggplot(dados ) +
+  geom_boxplot(aes(x = cor, y = temperatura)) + 
+  xlab("Cor da Estrela") + ylab("Temperatura (K)") + 
+  # ggtitle("Temperatura da Estrela por coloração") +
+  theme(legend.title = element_text(size = 8),
+          legend.text = element_text(size = 8), 
+          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+          axis.line = element_line(colour = "black"),
+          panel.background = element_rect(fill = "white", size = 2),
+          panel.grid.major = element_line(colour = "gray",size = 0.5,
+                                          linetype = "solid")) 
+```
+
+```{r}
+ggplot(dados ) +
+  geom_boxplot(aes(x = tipo, y = temperatura)) + 
+  xlab("Tipo de Estrela") + ylab("Temperatura (K)") + 
+  # ggtitle("Temperatura da Estrela por coloração") +
+  theme(legend.title = element_text(size = 8),
+          legend.text = element_text(size = 8), 
+          axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1),
+          axis.line = element_line(colour = "black"),
+          panel.background = element_rect(fill = "white", size = 2),
+          panel.grid.major = element_line(colour = "gray",size = 0.5,
+                                          linetype = "solid")) 
+```
+
+
+A temperatura da estrela é obtida pela lei de Wienn que relaciona a temperatura com o comprimento de onda emitido pela estrela.  
+A luminosidade de uma estrela foi obtida usando a lei de Stefan-Boltzmann. 
+
+```{r}
+ggplot(dados) + 
+  geom_boxplot(aes(x = tipo, y = luminosidade)) + 
+  xlab("Tipo de Estrela") + ylab("Luminosidade relativa (L/Lo)") +
+  # ggtitle("Luminosidade da Estrela por tipo de estrela")+ 
+  scale_y_continuous(labels = function(x) format(x, scientific = F)) +
+  theme(legend.title = element_text(size = 8),
+          legend.text = element_text(size = 8), 
+          axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1),
+          axis.line = element_line(colour = "black"),
+          panel.background = element_rect(fill = "white", size = 2),
+          panel.grid.major = element_line(colour = "gray",size = 0.5,
+                                          linetype = "solid")) 
+```
+
+A variável resposta do estudo é o tipo de estrela, nota-se que a luminosidade relativa é maior em estrelas gigantes. Este comportamento também é visível no gráfico abaixo no qual estrelas hipergigantes e supergigantes tem um raio maior que os outros tipos de estrelas. O raio da estrela foi estimado usando um conceito muito importante na astronomia chamado paralaxe.
+
+```{r}
+ggplot(dados) + 
+  geom_boxplot(aes(x = tipo, y = raio)) + 
+  xlab("Tipo de Estrela") + ylab("Raio") + 
+  # ggtitle("Raio Estimado da Estrela por tipo de estrela") + 
+  theme(legend.title = element_text(size = 8),
+          legend.text = element_text(size = 8), 
+          axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1),
+          axis.line = element_line(colour = "black"),
+          panel.background = element_rect(fill = "white", size = 2),
+          panel.grid.major = element_line(colour = "gray",size = 0.5,
+                                          linetype = "solid")) 
+```
+
+```{r}
+ggplot(dados) + 
+  geom_boxplot(aes(x = tipo, y = magnitude)) + 
+  xlab("Tipo de Estrela") + ylab("Magnitude Absoluta (Mv)") +
+  # ggtitle("Luminosidade da Estrela por tipo de estrela")+ 
+  scale_y_continuous(labels = function(x) format(x, scientific = F)) +
+  theme(legend.title = element_text(size = 8),
+          legend.text = element_text(size = 8), 
+          axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1),
+          axis.line = element_line(colour = "black"),
+          panel.background = element_rect(fill = "white", size = 2),
+          panel.grid.major = element_line(colour = "gray",size = 0.5,
+                                          linetype = "solid")) 
+```
+
+```{r}
+ggplot(dados %>%
+         group_by(tipo,cor) %>% 
+         summarise(count = n()), 
+       aes(x = reorder(tipo,(-count)), y = count)) +
+  geom_bar(aes(fill = cor), position = position_dodge2(preserve = c("total")), stat = 'identity') + 
+  # ggtitle("Tipo da estrela em relação a cor") + 
+  xlab("Tipo de Estrela") + ylab("Frequência") + 
+  labs(fill = "Cor da estrela") +
+  scale_fill_brewer(palette = "Set3") +
+  theme(legend.title = element_text(size = 8),
+          legend.text = element_text(size = 8), 
+          axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1),
+          axis.line = element_line(colour = "black"),
+          panel.background = element_rect(fill = "white", size = 2),
+          panel.grid.major = element_line(colour = "gray",size = 0.5,
+                                          linetype = "solid")) 
+
+```
+
+Nota-se pelo gráfico acima que estrelas maiores apresentam maior variabilidade de cores. Estrelas menores apresentam um comportamento oposto. Pelo fato de não se conhecer o processo de amostragem e coleta dos dados é difícil dizer se este comportamento pode ser generalizado, entretanto com o auxílio de outras variáveis será bastante útil para a classificação do tipo de estrela.
+
+```{r}
+ggplot(dados %>%
+         group_by(tipo,espectro) %>% 
+         summarise(count = n()), 
+       aes(x = reorder(tipo,(-count)), y = count)) +
+  geom_bar(aes(fill = espectro), position = "dodge", stat = 'identity') +
+  # ggtitle("Tipo da estrela em relação a cor") + 
+  xlab("Tipo de Estrela") + ylab("Frequência") + 
+  labs(color="Cor da estrela") +
+  theme(legend.title = element_text(size = 8),
+          legend.text = element_text(size = 8), 
+          axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1),
+          axis.line = element_line(colour = "black"),
+          panel.background = element_rect(fill = "white", size = 2),
+          panel.grid.major = element_line(colour = "gray",size = 0.5,
+                                          linetype = "solid")) 
+
+```
+
+```{r}
+# grafico de correlacao
+corrplot(cor(dados[,c(1,2,3,4)]), order= c("FPC"), tl.offset = 1, number.cex = 1.5,cl.pos = 'b',cl.cex = 1,
+         tl.cex = 1, method = "number", tl.col="black",addgrid.col="grey",
+         col = colorRampPalette(c("red", "gray", "blue"))(30))
+```
+
+# Árvore de Classificação
+
+<!-- colocar aqui modelagem da arvore de classificacao para ver como funciona, 
+acho que nao precisa colocar esse modelo no relatorio so ter o codigo no apendice  -->
+
+## Bagging
+
+<!--fazer arvores de classificacao utilizando bagging -->
+
+```{r}
+
+```
+
+## Boosting 
+
+<!--fazer arvores de classificacao utilizando boosting -->
+
+```{r}
+
+```
+
+# Simulações
+
+## Dados simulados para fazer as árvores de regressão 
+
+```{r}
+
+```
+
+### Bagging
+
+```{r}
+
+```
+
+### Boosting 
+
+```{r}
+
+```
+
+## Dados simulados para fazer as árvores de classificação
+
+```{r}
+
+```
+
+### Bagging
+
+```{r}
+
+```
+
+### Boosting 
+
+```{r}
+
+```
+
