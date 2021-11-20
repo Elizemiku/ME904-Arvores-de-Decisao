@@ -279,6 +279,11 @@ dados_estrelas[dados_estrelas$tipo=="2" ,5]<-"White Dwarf"
 dados_estrelas[dados_estrelas$tipo=="3" ,5]<-"Main Sequence"
 dados_estrelas[dados_estrelas$tipo=="4" ,5]<-"Supergiant"
 dados_estrelas[dados_estrelas$tipo=="5" ,5]<-"Hypergiant"
+
+dados_estrelas <- dados_estrelas %>% 
+  mutate(tipo = factor(tipo),
+         espectro = factor(espectro),
+         cor = factor(espectro))
 ```
 
 
@@ -310,8 +315,8 @@ Nota-se pelo gráfico que estrelas maiores apresentam maior variabilidade de cor
 
 ```{r}
 (temp_stars <- ggplot(dados_estrelas) +
-  geom_boxplot(aes(x = cor, y = temperatura, fill = cor)) + 
-  xlab("Cor da Estrela") + ylab("Temperatura (K)") + 
+  geom_boxplot(aes(x = tipo, y = temperatura, fill = tipo)) + 
+  xlab("Tipo") + ylab("Temperatura (K)") + 
   tema_geral +
   theme(axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1)))
   
@@ -382,8 +387,8 @@ ggplot(dados_estrelas %>%
 
 ```{r}
 # salvando graficos que vao pro relatorio
-ggsave("temp_lumi.jpg", c_bmi, width = 16.5, height = 8, units = "cm")
-ggsave("raio_magnitude.jpg", c_regiao_box, width = 16.5, height = 8, units = "cm")
+ggsave("temp_lumi.jpg", temp_lumi, width = 16.5, height = 8, units = "cm")
+ggsave("raio_magnitude.jpg", raio_magnitude, width = 16.5, height = 8, units = "cm")
 ```
 
 # Árvore de Classificação
@@ -405,9 +410,13 @@ estrelas_teste <- dados_estrelas[-rnd_estrelas[1:round(nrow(dados_estrelas) * 0.
 
 ```{r}
 mod_bag_estrelas <-
-  caret::train(tipo ~ ., data = estrelas_treino,
-               method = 'treebag')
+  caret::train(tipo ~ ., data = estrelas_treino[,-7],
+               method = 'treebag', metric = "Accuracy")
 
+#essa variavel deu problema espectro, por ela conter mais categorias do que quando originalmente foi ajustado, mas como e so uma categoria para a temperatura nao importante muito.
+bag_teste_estrelas <- predict(mod_bag_estrelas, newdata = estrelas_teste[,-7], type = "prob")
+
+caret::confusionMatrix(mod_bag_estrelas)
 ```
 
 ## Boosting 
@@ -415,10 +424,10 @@ mod_bag_estrelas <-
 <!--fazer arvores de classificacao utilizando boosting -->
 
 ```{r}
-# mod_boost_estrelas <-
-#   caret::train(tipo ~ ., data = estrelas_treino,
-#                method = 'blackboost',
-#                trControl = trainControl('cv', number = 10))
+mod_boost_estrelas <-
+  caret::train(tipo ~ ., data = estrelas_treino[,-7],
+               method = 'blackboost', family = 'multinom',
+               trControl = trainControl('cv', number = 10))
 
 ```
 
