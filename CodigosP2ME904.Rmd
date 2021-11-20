@@ -5,7 +5,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.pos = 'H')
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.pos = 'H')
 ```
 
 ```{r}
@@ -14,28 +14,207 @@ library(tidyverse)
 library(tidymodels)
 library(caret)
 library(corrplot)
+library(ggpubr)
+# pediu pra eu instalar quando fui rodar os modelos de arvore 
+library(party)
+library(mboost)
+library(partykit)
+```
+
+```{r}
+# tema para os graficos 
+tema_geral <- theme(
+  legend.title = element_text(size = 8),
+  legend.text = element_text(size = 8), 
+  legend.position = 'none',
+  axis.text.x = element_text(size = 8),
+  axis.line = element_line(colour = "black"),
+  panel.background = element_rect(fill = "white", size = 2),
+  panel.grid.major = element_line(colour = "gray",size = 0.5,
+                                  linetype = "solid"))  
+
+tema_facets <- theme(
+  axis.text.x = element_text(size = 8),
+  axis.line = element_line(colour = "black"),
+  legend.text = element_text(size = 8),
+  legend.position = 'none',
+  strip.background = element_rect(colour = "black", fill = "#99CCFF"),
+  panel.background = element_rect(fill = "white", size = 2),
+  panel.grid.major = element_line(colour = "gray",
+                                  size = 0.5,
+                                  linetype = "solid"),
+  panel.grid.minor = element_line(colour = "gray",
+                                  size = 0.5,
+                                  linetype = "solid")) 
 ```
 
 # Análise Descritiva - Preços de seguros médicos 
 
 <!-- ler conjunto de dados e fazer analise descritiva -->
 
+```{r}
+seguro <- read_csv("insurance.csv")
+```
+
+```{r}
+glimpse(seguro)
+```
+
+Gráficos Análise descritiva
+
+```{r}
+(g_idade <-
+  ggplot(seguro, aes(age)) +
+  geom_histogram(col = 'black') +
+  tema_geral)
+
+(g_sex <-
+    seguro %>%
+    group_by(sex) %>%
+    summarise(n = n()) %>%
+    ggplot(aes(sex, n)) +
+    geom_bar(stat = "identity") +
+    tema_geral)
+
+(g_bmi <-
+    ggplot(seguro, aes(bmi)) +
+    geom_histogram(col = 'black') + 
+    tema_geral)
+
+(g_fumante <-
+    seguro %>%
+    group_by(smoker) %>%
+    summarise(n = n()) %>%
+    ggplot(aes(smoker, n)) +
+    geom_bar(stat = "identity") +
+    tema_geral)
+
+(g_regiao <-
+    seguro %>%
+    group_by(region) %>%
+    summarise(n = n()) %>%
+    ggplot(aes(region, n)) +
+    geom_bar(stat = "identity") +
+    tema_geral)
+
+(g_valor <-
+    ggplot(seguro, aes(charges)) +
+    geom_histogram(col = 'black') +
+    tema_geral)
+
+(c_idade <-
+    ggplot(seguro, aes(charges, age)) +
+    geom_point() +
+    tema_geral)
+
+(c_sex_hist <-
+    seguro %>%
+    ggplot(aes(charges, fill = sex)) +
+    geom_histogram(col = 'black') +
+    facet_wrap(. ~ sex) +
+    tema_facets)
+
+(c_sex_box <-
+    seguro %>%
+    ggplot(aes(y = charges, fill = sex)) +
+    geom_boxplot() +
+    facet_wrap(. ~ sex) +
+    tema_facets)
+
+(c_bmi <-
+    ggplot(seguro, aes(charges, bmi)) +
+    geom_point() +
+    tema_geral)
+
+(c_fumante_hist <-
+    seguro %>%
+    ggplot(aes(charges, fill = smoker)) +
+    geom_histogram(col = 'black') +
+    facet_wrap(. ~ smoker) +
+    tema_facets)
+
+(c_regiao_hist <-
+    seguro %>%
+    ggplot(aes(charges, fill = region)) +
+    geom_histogram(col = 'black') +
+    facet_wrap(. ~ region) +
+    tema_facets)
+
+(c_regiao_box <-
+    seguro %>%
+    ggplot(aes(y = charges, fill = region)) +
+    geom_boxplot() +
+    facet_wrap(. ~ region) +
+    tema_facets)
+
+(c_fumante_reg <-
+    seguro %>%
+    ggplot(aes(charges, fill = smoker)) +
+    geom_histogram(col = 'black') +
+    facet_wrap(. ~ region) +
+    tema_facets)
+
+(c_fumante_bmi <-
+    seguro %>%
+    ggplot(aes(charges, bmi)) +
+    geom_point() +
+    facet_wrap(. ~ smoker) +
+    tema_facets)
+
+(c_fumante_idade <-
+    seguro %>%
+    ggplot(aes(charges, age)) +
+    geom_point() +
+    facet_wrap(. ~ smoker) +
+    tema_facets)
+```
+
+
+```{r}
+# salvando graficos que vao pro relatorio
+ggsave("Valor_idade.jpg", c_idade, width = 16.5, height = 8, units = "cm")
+ggsave("Valor_sexo.jpg", c_sex_box, width = 16.5, height = 8, units = "cm")
+ggsave("Valor_bmi.jpg", c_bmi, width = 16.5, height = 8, units = "cm")
+ggsave("Valor_regiao.jpg", c_regiao_box, width = 16.5, height = 8, units = "cm")
+ggsave("Valor_fumo.jpg", c_fumante_hist, width = 16.5, height = 8, units = "cm")
+
+```
+
 # Árvore de Regressão 
 
 <!-- colocar aqui modelagem da arvore de regressao para ver como funciona, 
 acho que nao precisa colocar esse modelo no relatorio so ter o codigo no apendice  -->
 
+Criando dados de treino e teste
 ```{r}
-
+set.seed(123)
+rnd_ind <- sample(1:nrow(seguro))
+seguro_treino <- seguro[rnd_ind[1:round(nrow(seguro) * 0.8)],]
+seguro_teste <- seguro[-rnd_ind[1:round(nrow(seguro) * 0.8)],]
 ```
-
 
 ## Bagging
 
 <!--fazer arvores de regressao utilizando bagging -->
 
 ```{r}
+mod_bag <-
+  caret::train(charges ~ ., data = seguro_treino,
+               method = 'treebag')
 
+bag_teste <- predict(mod_bag, newdata = seguro_teste)
+
+bag_teste_eqm <- mean((bag_teste - seguro_teste$charges)^2)
+
+(g_bag_err <-
+    tibble(Erro = (bag_teste - seguro_teste$charges),
+           `Valor original` = seguro_teste$charges) %>%
+    ggplot(aes(`Valor original`, Erro)) +
+    geom_point() +
+    geom_hline(yintercept = 0, colour = 'red') +
+    scale_y_continuous(breaks = seq(20000, -20000, by = -5000)) +
+    coord_cartesian(ylim = c(-20000, 20000)) +
+    theme_bw())
 ```
 
 ## Boosting 
@@ -43,7 +222,34 @@ acho que nao precisa colocar esse modelo no relatorio so ter o codigo no apendic
 <!--fazer arvores de regressao utilizando boosting -->
 
 ```{r}
+mod_boost <-
+  caret::train(charges ~ ., data = seguro_treino,
+               method = 'blackboost',
+               trControl = trainControl('cv', number = 10))
 
+boost_teste <- predict(mod_boost, newdata = seguro_teste)
+
+boost_teste_eqm <- mean((boost_teste - seguro_teste$charges)^2)
+
+(g_boost_err <-
+    tibble(Erro = (boost_teste - seguro_teste$charges),
+           `Valor original` = seguro_teste$charges) %>%
+    ggplot(aes(`Valor original`, Erro)) +
+    geom_point() +
+    geom_hline(yintercept = 0, colour = 'red') +
+    scale_y_continuous(breaks = seq(20000, -20000, by = -5000)) +
+    coord_cartesian(ylim = c(-20000, 20000)) +
+    theme_bw())
+```
+
+## Erros de predicao 
+
+```{r}
+(g_err <- ggarrange(g_bag_err, g_boost_err,
+                    labels = c("A", "B"),
+                    ncol = 2))
+
+ggsave("Erro_prev_regressao.jpg", g_err, width = 16.5, height = 8, units = "cm")
 ```
 
 
@@ -51,6 +257,7 @@ acho que nao precisa colocar esse modelo no relatorio so ter o codigo no apendic
 
 <!-- ler conjunto de dados e fazer analise descritiva -->
 
+Manipulando dados 
 ```{r}
 dados_estrelas <- read_csv("stars.csv")
 
@@ -72,8 +279,6 @@ dados_estrelas[dados_estrelas$tipo=="2" ,5]<-"White Dwarf"
 dados_estrelas[dados_estrelas$tipo=="3" ,5]<-"Main Sequence"
 dados_estrelas[dados_estrelas$tipo=="4" ,5]<-"Supergiant"
 dados_estrelas[dados_estrelas$tipo=="5" ,5]<-"Hypergiant"
-
-
 ```
 
 
@@ -91,94 +296,55 @@ O banco de dados contém 240 observações e 7 variáveis:
 glimpse(dados_estrelas)
 ```
 
-
-As estrelas são corpos celestes que são densas e emitem luz pela conversão de energia térmica em energia eletromagnética (luz). E desta forma emite luz com um certo comprimento de onda $\lambda$ que é bastante relacionado com a cor da estrela. Este comportamento pode ser ilustrado pelo gráfico abaixo:
-
-```{r}
-ggplot(dados_estrelas) +
-  geom_boxplot(aes(x = cor, y = temperatura)) + 
-  xlab("Cor da Estrela") + ylab("Temperatura (K)") + 
-  # ggtitle("Temperatura da Estrela por coloração") +
-  theme(legend.title = element_text(size = 8),
-          legend.text = element_text(size = 8), 
-          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-          axis.line = element_line(colour = "black"),
-          panel.background = element_rect(fill = "white", size = 2),
-          panel.grid.major = element_line(colour = "gray",size = 0.5,
-                                          linetype = "solid")) 
-```
-
-```{r}
-ggplot(dados_estrelas) +
-  geom_boxplot(aes(x = tipo, y = temperatura)) + 
-  xlab("Tipo de Estrela") + ylab("Temperatura (K)") + 
-  # ggtitle("Temperatura da Estrela por coloração") +
-  theme(legend.title = element_text(size = 8),
-          legend.text = element_text(size = 8), 
-          axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1),
-          axis.line = element_line(colour = "black"),
-          panel.background = element_rect(fill = "white", size = 2),
-          panel.grid.major = element_line(colour = "gray",size = 0.5,
-                                          linetype = "solid")) 
-```
+Graficos Analise Descritiva
 
 
-A temperatura da estrela é obtida pela lei de Wienn que relaciona a temperatura com o comprimento de onda emitido pela estrela.  
+As estrelas são corpos celestes que são densas e emitem luz pela conversão de energia térmica em energia eletromagnética (luz). E desta forma emite luz com um certo comprimento de onda $\lambda$ que é bastante relacionado com a cor da estrela. Este comportamento pode ser ilustrado no gráfico. 
+
+A temperatura da estrela é obtida pela lei de Wienn que relaciona a temperatura com o comprimento de onda emitido pela estrela.
 A luminosidade de uma estrela foi obtida usando a lei de Stefan-Boltzmann. 
-
-```{r}
-ggplot(dados_estrelas) + 
-  geom_boxplot(aes(x = tipo, y = luminosidade)) + 
-  xlab("Tipo de Estrela") + ylab("Luminosidade relativa (L/Lo)") +
-  # ggtitle("Luminosidade da Estrela por tipo de estrela")+ 
-  scale_y_continuous(labels = function(x) format(x, scientific = F)) +
-  theme(legend.title = element_text(size = 8),
-          legend.text = element_text(size = 8), 
-          axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1),
-          axis.line = element_line(colour = "black"),
-          panel.background = element_rect(fill = "white", size = 2),
-          panel.grid.major = element_line(colour = "gray",size = 0.5,
-                                          linetype = "solid")) 
-```
 
 A variável resposta do estudo é o tipo de estrela, nota-se que a luminosidade relativa é maior em estrelas gigantes. Este comportamento também é visível no gráfico abaixo no qual estrelas hipergigantes e supergigantes tem um raio maior que os outros tipos de estrelas. O raio da estrela foi estimado usando um conceito muito importante na astronomia chamado paralaxe.
 
-```{r}
-ggplot(dados_estrelas) + 
-  geom_boxplot(aes(x = tipo, y = raio)) + 
-  xlab("Tipo de Estrela") + ylab("Raio") + 
-  # ggtitle("Raio Estimado da Estrela por tipo de estrela") + 
-  theme(legend.title = element_text(size = 8),
-          legend.text = element_text(size = 8), 
-          axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1),
-          axis.line = element_line(colour = "black"),
-          panel.background = element_rect(fill = "white", size = 2),
-          panel.grid.major = element_line(colour = "gray",size = 0.5,
-                                          linetype = "solid")) 
-```
+Nota-se pelo gráfico que estrelas maiores apresentam maior variabilidade de cores. Estrelas menores apresentam um comportamento oposto. Pelo fato de não se conhecer o processo de amostragem e coleta dos dados é difícil dizer se este comportamento pode ser generalizado, entretanto com o auxílio de outras variáveis será bastante útil para a classificação do tipo de estrela.
 
 ```{r}
-ggplot(dados_estrelas) + 
-  geom_boxplot(aes(x = tipo, y = magnitude)) + 
+(temp_stars <- ggplot(dados_estrelas) +
+  geom_boxplot(aes(x = cor, y = temperatura, fill = cor)) + 
+  xlab("Cor da Estrela") + ylab("Temperatura (K)") + 
+  tema_geral +
+  theme(axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1)))
+  
+(lumi_stars <- ggplot(dados_estrelas) + 
+  geom_boxplot(aes(x = tipo, y = luminosidade, fill = tipo)) + 
+  xlab("Tipo de Estrela") + ylab("Luminosidade relativa (L/Lo)") +
+  scale_y_continuous(labels = function(x) format(x, scientific = F)) +
+  tema_geral +
+  theme(axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1)))
+
+temp_lumi <- ggarrange(temp_stars, lumi_stars)
+
+(raio <- ggplot(dados_estrelas) + 
+  geom_boxplot(aes(x = tipo, y = raio, fill = tipo)) + 
+  xlab("Tipo de Estrela") + ylab("Raio") + 
+  tema_geral +
+  theme(axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1)))
+
+(magnitude <- ggplot(dados_estrelas) + 
+  geom_boxplot(aes(x = tipo, y = magnitude, fill = tipo)) + 
   xlab("Tipo de Estrela") + ylab("Magnitude Absoluta (Mv)") +
   # ggtitle("Luminosidade da Estrela por tipo de estrela")+ 
   scale_y_continuous(labels = function(x) format(x, scientific = F)) +
-  theme(legend.title = element_text(size = 8),
-          legend.text = element_text(size = 8), 
-          axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1),
-          axis.line = element_line(colour = "black"),
-          panel.background = element_rect(fill = "white", size = 2),
-          panel.grid.major = element_line(colour = "gray",size = 0.5,
-                                          linetype = "solid")) 
-```
+  tema_geral +
+  theme(axis.text.x = element_text(angle = 20, vjust = 0.5, hjust=1)))
 
-```{r}
+raio_magnitude <- ggarrange(raio, magnitude)
+
 ggplot(dados_estrelas %>%
          group_by(tipo,cor) %>% 
          summarise(count = n()), 
        aes(x = reorder(tipo,(-count)), y = count)) +
   geom_bar(aes(fill = cor), position = position_dodge2(preserve = c("total")), stat = 'identity') + 
-  # ggtitle("Tipo da estrela em relação a cor") + 
   xlab("Tipo de Estrela") + ylab("Frequência") + 
   labs(fill = "Cor da estrela") +
   scale_fill_brewer(palette = "Set3") +
@@ -190,11 +356,6 @@ ggplot(dados_estrelas %>%
           panel.grid.major = element_line(colour = "gray",size = 0.5,
                                           linetype = "solid")) 
 
-```
-
-Nota-se pelo gráfico acima que estrelas maiores apresentam maior variabilidade de cores. Estrelas menores apresentam um comportamento oposto. Pelo fato de não se conhecer o processo de amostragem e coleta dos dados é difícil dizer se este comportamento pode ser generalizado, entretanto com o auxílio de outras variáveis será bastante útil para a classificação do tipo de estrela.
-
-```{r}
 ggplot(dados_estrelas %>%
          group_by(tipo,espectro) %>% 
          summarise(count = n()), 
@@ -211,13 +372,18 @@ ggplot(dados_estrelas %>%
           panel.grid.major = element_line(colour = "gray",size = 0.5,
                                           linetype = "solid")) 
 
+
+# grafico de correlacao
+(corr_va_num_stars <- corrplot(cor(dados_estrelas[,c(1,2,3,4)]), order= c("FPC"), 
+                               tl.offset = 1, number.cex = 1.5, cl.pos = 'b',cl.cex = 1,
+                               tl.cex = 1, method = "number", tl.col="black", addgrid.col="grey",
+                               col = colorRampPalette(c("red", "gray", "blue"))(30)))
 ```
 
 ```{r}
-# grafico de correlacao
-corrplot(cor(dados_estrelas[,c(1,2,3,4)]), order= c("FPC"), tl.offset = 1, number.cex = 1.5,
-         cl.pos = 'b',cl.cex = 1,tl.cex = 1, method = "number", tl.col="black",
-         addgrid.col="grey", col = colorRampPalette(c("red", "gray", "blue"))(30))
+# salvando graficos que vao pro relatorio
+ggsave("temp_lumi.jpg", c_bmi, width = 16.5, height = 8, units = "cm")
+ggsave("raio_magnitude.jpg", c_regiao_box, width = 16.5, height = 8, units = "cm")
 ```
 
 # Árvore de Classificação
@@ -225,11 +391,22 @@ corrplot(cor(dados_estrelas[,c(1,2,3,4)]), order= c("FPC"), tl.offset = 1, numbe
 <!-- colocar aqui modelagem da arvore de classificacao para ver como funciona, 
 acho que nao precisa colocar esse modelo no relatorio so ter o codigo no apendice  -->
 
+Separando dados de treino e teste
+```{r}
+set.seed(123)
+rnd_estrelas <- sample(1:nrow(dados_estrelas))
+estrelas_treino <- dados_estrelas[rnd_estrelas[1:round(nrow(dados_estrelas) * 0.8)],]
+estrelas_teste <- dados_estrelas[-rnd_estrelas[1:round(nrow(dados_estrelas) * 0.8)],]
+```
+
 ## Bagging
 
 <!--fazer arvores de classificacao utilizando bagging -->
 
 ```{r}
+mod_bag_estrelas <-
+  caret::train(tipo ~ ., data = estrelas_treino,
+               method = 'treebag')
 
 ```
 
@@ -238,8 +415,19 @@ acho que nao precisa colocar esse modelo no relatorio so ter o codigo no apendic
 <!--fazer arvores de classificacao utilizando boosting -->
 
 ```{r}
+# mod_boost_estrelas <-
+#   caret::train(tipo ~ ., data = estrelas_treino,
+#                method = 'blackboost',
+#                trControl = trainControl('cv', number = 10))
 
 ```
+
+## Erros de predicao 
+
+```{r}
+
+```
+
 
 # Simulações
 
