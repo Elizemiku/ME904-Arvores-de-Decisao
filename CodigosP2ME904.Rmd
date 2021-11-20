@@ -283,7 +283,7 @@ dados_estrelas[dados_estrelas$tipo=="5" ,5]<-"Hypergiant"
 dados_estrelas <- dados_estrelas %>% 
   mutate(tipo = factor(tipo),
          espectro = factor(espectro),
-         cor = factor(espectro))
+         cor = factor(cor))
 ```
 
 
@@ -425,9 +425,14 @@ caret::confusionMatrix(mod_bag_estrelas)
 
 ```{r}
 mod_boost_estrelas <-
-  caret::train(tipo ~ ., data = estrelas_treino[,-7],
-               method = 'blackboost', family = 'multinom',
+  caret::train(as.factor(tipo) ~ ., data = estrelas_treino[,-7],
+               method = 'AdaBoost.M1',
                trControl = trainControl('cv', number = 10))
+
+mod_boostM_estrelas <-
+  caret::train(as.factor(tipo) ~ ., data = estrelas_treino[,-7],
+               method = 'AdaBoost.M1',
+               tuneGrid = expand.grid(mfinal = 100, maxdepth = 2, coeflearn = "Freund"))
 
 ```
 
