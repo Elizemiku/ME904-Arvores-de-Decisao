@@ -15,10 +15,11 @@ library(tidymodels)
 library(caret)
 library(corrplot)
 library(ggpubr)
-# pediu pra eu instalar quando fui rodar os modelos de arvore 
+# pacotes para rodar os modelos de arvore com bagging e boosting do caret
 library(party)
 library(mboost)
 library(partykit)
+library(adabag)
 ```
 
 ```{r}
@@ -399,6 +400,10 @@ acho que nao precisa colocar esse modelo no relatorio so ter o codigo no apendic
 Separando dados de treino e teste
 ```{r}
 set.seed(123)
+
+#essa variavel deu problema espectro, por ela conter mais categorias do que quando originalmente foi ajustado, mas como e so uma categoria para a temperatura nao importante muito.
+dados_estrelas <- dados_estrelas[,-7]
+
 rnd_estrelas <- sample(1:nrow(dados_estrelas))
 estrelas_treino <- dados_estrelas[rnd_estrelas[1:round(nrow(dados_estrelas) * 0.8)],]
 estrelas_teste <- dados_estrelas[-rnd_estrelas[1:round(nrow(dados_estrelas) * 0.8)],]
@@ -410,13 +415,14 @@ estrelas_teste <- dados_estrelas[-rnd_estrelas[1:round(nrow(dados_estrelas) * 0.
 
 ```{r}
 mod_bag_estrelas <-
-  caret::train(tipo ~ ., data = estrelas_treino[,-7],
+  caret::train(tipo ~ ., data = estrelas_treino,
                method = 'treebag', metric = "Accuracy")
 
-#essa variavel deu problema espectro, por ela conter mais categorias do que quando originalmente foi ajustado, mas como e so uma categoria para a temperatura nao importante muito.
-bag_teste_estrelas <- predict(mod_bag_estrelas, newdata = estrelas_teste[,-7], type = "prob")
+bag_teste_estrelas <- predict(mod_bag_estrelas, newdata = estrelas_teste, type = "prob")
 
-caret::confusionMatrix(mod_bag_estrelas)
+import_var_estrelas <- plot(varImp(mod_bag_estrelas), xlab = "Importância")
+
+caret::confusionMatrix(mod_bag_estrelas, reference = estrelas_teste$tipo)
 ```
 
 ## Boosting 
@@ -424,21 +430,19 @@ caret::confusionMatrix(mod_bag_estrelas)
 <!--fazer arvores de classificacao utilizando boosting -->
 
 ```{r}
-mod_boost_estrelas <-
-  caret::train(as.factor(tipo) ~ ., data = estrelas_treino[,-7],
-               method = 'AdaBoost.M1',
-               trControl = trainControl('cv', number = 10))
 
+# demora pra rodar 
 mod_boostM_estrelas <-
-  caret::train(as.factor(tipo) ~ ., data = estrelas_treino[,-7],
+  caret::train(tipo ~ ., data = estrelas_treino,
                method = 'AdaBoost.M1',
                tuneGrid = expand.grid(mfinal = 100, maxdepth = 2, coeflearn = "Freund"))
 
-```
+boostM_teste_estrelas <- predict(mod_boostM_estrelas, newdata = estrelas_teste, type = "prob")
 
-## Erros de predicao 
+import_var_estrelas_bost <- plot(varImp(mod_boostM_estrelas), xlab = "Importância")
 
-```{r}
+caret::confusionMatrix(mod_boostM_estrelas, reference = estrelas_teste$tipo)
+
 
 ```
 
