@@ -168,6 +168,12 @@ Gráficos Análise descritiva
     geom_point() +
     facet_wrap(. ~ smoker) +
     tema_facets)
+
+mcor <-
+  seguro %>%
+  mutate(smoker = ifelse(smoker == "yes", 1, 0)) %>%
+  dplyr::select(where(is.numeric)) %>%
+  cor()
 ```
 
 
