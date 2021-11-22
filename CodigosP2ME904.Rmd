@@ -20,6 +20,8 @@ library(party)
 library(mboost)
 library(partykit)
 library(adabag)
+require(h2o)
+h2o::h2o.init()
 ```
 
 ```{r}
@@ -225,7 +227,7 @@ bag_teste_eqm <- mean((bag_teste - seguro_teste$charges)^2)
 ```{r}
 mod_boost <-
   caret::train(charges ~ ., data = seguro_treino,
-               method = 'blackboost',
+               method = 'gbm_h2o',
                trControl = trainControl('cv', number = 10))
 
 boost_teste <- predict(mod_boost, newdata = seguro_teste)
@@ -418,11 +420,11 @@ mod_bag_estrelas <-
   caret::train(tipo ~ ., data = estrelas_treino,
                method = 'treebag', metric = "Accuracy")
 
-bag_teste_estrelas <- predict(mod_bag_estrelas, newdata = estrelas_teste, type = "prob")
+bag_teste_estrelas <- predict(mod_bag_estrelas, newdata = estrelas_teste)
 
 import_var_estrelas <- plot(varImp(mod_bag_estrelas), xlab = "Importância")
 
-caret::confusionMatrix(mod_bag_estrelas, reference = estrelas_teste$tipo)
+caret::confusionMatrix(bag_teste_estrelas, reference = estrelas_teste$tipo)
 ```
 
 ## Boosting 
@@ -430,18 +432,17 @@ caret::confusionMatrix(mod_bag_estrelas, reference = estrelas_teste$tipo)
 <!--fazer arvores de classificacao utilizando boosting -->
 
 ```{r}
-
 # demora pra rodar 
 mod_boostM_estrelas <-
   caret::train(tipo ~ ., data = estrelas_treino,
                method = 'AdaBoost.M1',
                tuneGrid = expand.grid(mfinal = 100, maxdepth = 2, coeflearn = "Freund"))
 
-boostM_teste_estrelas <- predict(mod_boostM_estrelas, newdata = estrelas_teste, type = "prob")
+boostM_teste_estrelas <- predict(mod_boostM_estrelas, newdata = estrelas_teste)
 
 import_var_estrelas_bost <- plot(varImp(mod_boostM_estrelas), xlab = "Importância")
 
-caret::confusionMatrix(mod_boostM_estrelas, reference = estrelas_teste$tipo)
+caret::confusionMatrix(boostM_teste_estrelas, reference = estrelas_teste$tipo)
 
 
 ```
