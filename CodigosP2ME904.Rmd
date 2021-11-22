@@ -504,7 +504,7 @@ bag_simu_reg_teste_eqm <- mean((bag_simu_reg_teste - simu_reg$y)^2)
 ```{r}
 mod_simu_reg_boost <-
   caret::train(y ~ ., data = simu_reg_treino,
-               method = 'h2o',
+               method = 'gbm_h2o',
                trControl = trainControl('cv', number = 10))
 
 boost_simu_reg_teste <- predict(mod_simu_reg_boost, newdata = simu_reg_teste)
