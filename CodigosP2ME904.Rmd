@@ -464,7 +464,10 @@ simu_reg <- tibble(
   x3 = sample(c(0, 1), tam_amostra, replace = T,prob = c(0.80,0.20)),
   x4 = runif(tam_amostra,1,5),
   x5 = sample(c(0,1,2,3), tam_amostra, replace = T,prob = c(.2,.4,.1,0.3)),
-  y = 3 + x1 + 0.1*x2 - 2.2*x3 + 0.4*x4 - 5.5*((x5==1) + (x5==2) +(x5==3))
+  x6 = runif(tam_amostra,20,50),
+  x7 = sample(c(0, 1), tam_amostra, replace = T,prob = c(0.9,0.1)),
+  x8 = rnorm(tam_amostra,mean = 30, sd = 6),
+  y = 3 + x1 + 0.1*x2 - 2.2*x3 + 0.4*x4 - 5.5*(x5==1) - 2.5*(x5==2) + 1.7*(x5==3)
 )
 ```
 
@@ -492,6 +495,7 @@ bag_simu_reg_teste_eqm <- mean((bag_simu_reg_teste - simu_reg$y)^2)
     ggplot(aes(Valor original, Erro)) +
     geom_point() +
     geom_hline(yintercept = 0, colour = 'red') +
+    coord_cartesian(ylim = c(-2.5, 2.5)) +
     theme_bw())
 ```
 
@@ -513,6 +517,7 @@ boost_simu_reg_teste_eqm <- mean((boost_simu_reg_teste - simu_reg_teste$y)^2)
     ggplot(aes(Valor original, Erro)) +
     geom_point() +
     geom_hline(yintercept = 0, colour = 'red') +
+    coord_cartesian(ylim = c(-2.5, 2.5)) +
     theme_bw())
 ```
 
@@ -534,8 +539,11 @@ simu_class <- tibble(
   x2 = sample(c(0, 1), tam_amostra, replace = T,prob = c(0.7,0.30)),
   x3 = runif(tam_amostra,1,10),
   x4 = sample(c(0,1,2), tam_amostra, replace = T,prob = c(.35,.4,.25)),
-  y = 2 + x1 + 0.2*x2 - 1.2*x3 + 2*x4 + 3.5*((x4==1) + (x4==2) +(x4==3)),
-  y_ = ifelse(y<0,"a",ifelse(y<2,"b","c"))
+  x5 = runif(tam_amostra,20,50),
+  x6 = sample(c(0, 1), tam_amostra, replace = T,prob = c(0.9,0.1)),
+  x7 = rnorm(tam_amostra,mean = 30, sd = 6),
+  t = 2 + x1 + 0.2*x2 - 1.2*x3 + 3.5*(x4==1) + 1.5*(x4==2) - 1.9*(x4==3),
+  y = ifelse(t<(-1),"a",ifelse(t<2,"b","c"))
 )
 ```
 
@@ -555,7 +563,7 @@ mod_simu_class_bag <-
 
 bag_simu_class_teste <- predict(mod_simu_class_bag, newdata = simu_class_teste)
 
-confusionMatrix(predict(mod_simu_class_bag,newdata = simu_class_teste), as.factor(simu_class_teste$y_))
+confusionMatrix(predict(mod_simu_class_bag,newdata = simu_class_teste), as.factor(simu_class_teste$y))
 ```
 
 ### Boosting 
@@ -571,6 +579,6 @@ mod_simu_class_boostM <-
                method = 'AdaBoost.M1',
                tuneGrid = expand.grid(mfinal = 100, maxdepth = 2, coeflearn = "Freund"))
 
-confusionMatrix(predict(mod_simu_class_boost,newdata = simu_class_treino), as.factor(simu_class_treino$y_))
+confusionMatrix(predict(mod_simu_class_boost,newdata = simu_class_treino), as.factor(simu_class_treino$y))
 ```
 
