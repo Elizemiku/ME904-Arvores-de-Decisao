@@ -20,7 +20,7 @@ library(party)
 library(mboost)
 library(partykit)
 library(adabag)
-require(h2o)
+library(h2o)
 h2o::h2o.init()
 ```
 
@@ -56,10 +56,8 @@ tema_facets <- theme(
 <!-- ler conjunto de dados e fazer analise descritiva -->
 
 ```{r}
+#lendo dados
 seguro <- read_csv("insurance.csv")
-```
-
-```{r}
 glimpse(seguro)
 ```
 
@@ -453,36 +451,120 @@ caret::confusionMatrix(boostM_teste_estrelas, reference = estrelas_teste$tipo)
 ## Dados simulados para fazer as árvores de regressão 
 
 ```{r}
+tam_amostra=1000
+simu_reg <- tibble(
+  x1 = sample(c(0, 1), tam_amostra, replace = T,prob = c(0.5,0.5)),
+  x2 = rnorm(tam_amostra,mean = 20, sd = 5),
+  x3 = sample(c(0, 1), tam_amostra, replace = T,prob = c(0.80,0.20)),
+  x4 = runif(tam_amostra,1,5),
+  x5 = sample(c(0,1,2,3), tam_amostra, replace = T,prob = c(.2,.4,.1,0.3)),
+  y = 3 + x1 + 0.1*x2 - 2.2*x3 + 0.4*x4 - 5.5*((x5==1) + (x5==2) +(x5==3))
+)
+```
 
+```{r}
+set.seed(123)
+rnd_ind <- sample(1:nrow(simu_reg))
+simu_reg_treino <- simu_reg[rnd_ind[1:round(nrow(simu_reg) * 0.8)],]
+simu_reg_teste <- simu_reg[-rnd_ind[1:round(nrow(simu_reg) * 0.8)],]
 ```
 
 ### Bagging
 
 ```{r}
+mod_simu_reg_bag <-
+  caret::train(y ~ ., data = simu_reg,
+               method = 'treebag')
 
+bag_simu_reg_teste <- predict(mod_simu_reg_bag, newdata = simu_reg_teste)
+
+bag_simu_reg_teste_eqm <- mean((bag_simu_reg_teste - simu_reg$y)^2)
+
+(g_bag_simu_reg_err <-
+    tibble(Erro = (bag_simu_reg_teste - simu_reg_teste$y),
+           Valor original = simu_reg_teste$y) %>%
+    ggplot(aes(Valor original, Erro)) +
+    geom_point() +
+    geom_hline(yintercept = 0, colour = 'red') +
+    theme_bw())
 ```
 
 ### Boosting 
 
 ```{r}
+mod_simu_reg_boost <-
+  caret::train(y ~ ., data = simu_reg_treino,
+               method = 'h2o',
+               trControl = trainControl('cv', number = 10))
 
+boost_simu_reg_teste <- predict(mod_simu_reg_boost, newdata = simu_reg_teste)
+
+boost_simu_reg_teste_eqm <- mean((boost_simu_reg_teste - simu_reg_teste$y)^2)
+
+(g_boost_simu_reg_err <-
+    tibble(Erro = (boost_simu_reg_teste - simu_reg_teste$y),
+           Valor original = simu_reg_teste$y) %>%
+    ggplot(aes(Valor original, Erro)) +
+    geom_point() +
+    geom_hline(yintercept = 0, colour = 'red') +
+    theme_bw())
+```
+
+## Erros de predição
+```{r}
+(g_simu_reg_err <- ggarrange(g_bag_simu_reg_err, g_boost_simu_reg_err,
+                    labels = c("A", "B"),
+                    ncol = 2))
+
+ggsave("Erro_prev_regressao_simu.jpg", g_simu_reg_err, width = 16.5, height = 8, units = "cm")
 ```
 
 ## Dados simulados para fazer as árvores de classificação
 
 ```{r}
+tam_amostra=1000
+simu_class <- tibble(
+  x1 = sample(c(0, 1), tam_amostra, replace = T,prob = c(0.5,0.5)),
+  x2 = sample(c(0, 1), tam_amostra, replace = T,prob = c(0.7,0.30)),
+  x3 = runif(tam_amostra,1,10),
+  x4 = sample(c(0,1,2), tam_amostra, replace = T,prob = c(.35,.4,.25)),
+  y = 2 + x1 + 0.2*x2 - 1.2*x3 + 2*x4 + 3.5*((x4==1) + (x4==2) +(x4==3)),
+  y_ = ifelse(y<0,"a",ifelse(y<2,"b","c"))
+)
+```
 
+```{r}
+set.seed(123)
+rnd_ind <- sample(1:nrow(simu_class))
+simu_class_treino <- simu_class[rnd_ind[1:round(nrow(simu_class) * 0.8)],]
+simu_class_teste <- simu_class[-rnd_ind[1:round(nrow(simu_class) * 0.8)],]
 ```
 
 ### Bagging
 
 ```{r}
+mod_simu_class_bag <-
+  caret::train(y_ ~ ., data = simu_class_treino,
+               method = 'treebag', metric = "Accuracy")
 
+bag_simu_class_teste <- predict(mod_simu_class_bag, newdata = simu_class_teste)
+
+confusionMatrix(predict(mod_simu_class_bag,newdata = simu_class_teste), as.factor(simu_class_teste$y_))
 ```
 
 ### Boosting 
 
 ```{r}
+mod_simu_class_boost <-
+  caret::train(as.factor(y_) ~ ., data = simu_class_treino,
+               method = 'AdaBoost.M1',
+               trControl = trainControl('cv', number = 10))
 
+mod_simu_class_boostM <-
+  caret::train(as.factor(y_) ~ ., data = simu_class_treino,
+               method = 'AdaBoost.M1',
+               tuneGrid = expand.grid(mfinal = 100, maxdepth = 2, coeflearn = "Freund"))
+
+confusionMatrix(predict(mod_simu_class_boost,newdata = simu_class_treino), as.factor(simu_class_treino$y_))
 ```
 
